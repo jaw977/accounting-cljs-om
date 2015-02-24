@@ -133,11 +133,6 @@
                      {:account (account-key->str account)
                       :amount (display-amount amount unit)})))))
 
-(defn render-menu-link [this-screen title active-screen]
-  (if (= this-screen active-screen)
-    (dom/span #js {:style #js {:fontWeight "bold"}} title)
-    (dom/a #js {:onClick (send! :screen this-screen) :href "#"} title)))
-      
 (defn render-import [state]
   (dom/textarea #js {:onKeyDown (send! :import) :rows 25 :cols 100}))
   
@@ -210,16 +205,18 @@
             (dom/td nil amount)
             (dom/td nil note)))))))
 
+(defn render-menu [current-screen]
+  (apply dom/p nil
+    (interpose " \u00A0 "
+      (for [title ["Import" "Summary" "Detail" "Register"]
+            :let [screen (keyword (.toLowerCase title))]]
+        (if (= screen current-screen)
+          (dom/span #js {:style #js {:fontWeight "bold"}} title)
+          (dom/a #js {:onClick (send! :screen screen) :href "#"} title))))))
+           
 (defn render-screen [{:keys [screen txs] :as state}]
   (dom/div nil
-    (dom/p nil
-      (render-menu-link :import "Import" screen)
-      " \u00A0 "
-      (render-menu-link :summary "Summary" screen)
-      " \u00A0 "
-      (render-menu-link :detail "Detail" screen)
-      " \u00A0 "
-      (render-menu-link :register "Register" screen))
+    (render-menu screen)
     (case screen
       :import (render-import state)
       :summary (render-summary (summarize txs))
