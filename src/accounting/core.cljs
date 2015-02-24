@@ -136,12 +136,15 @@
 (defn render-import [state]
   (dom/textarea #js {:onKeyDown (send! :import) :rows 25 :cols 100}))
   
+(defn render-table-headings [headings]
+  (dom/thead nil
+    (apply dom/tr nil
+      (for [heading headings]
+        (dom/th nil heading)))))
+
 (defn render-summary [summary-rows]
   (dom/table nil
-    (dom/thead nil
-      (dom/tr nil
-        (dom/th nil "Account")
-        (dom/th nil "Amount")))
+    (render-table-headings ["Account" "Amount"])
     (apply dom/tbody nil
       (for [{:keys [account amount]} summary-rows]
         (dom/tr nil
@@ -151,10 +154,7 @@
 (defn render-detail [state]
   (dom/div nil
     (dom/table nil
-      (dom/thead nil
-        (apply dom/tr nil
-          (for [heading ["Date" "Description" "Account" "Amount"]]
-            (dom/th nil heading))))
+      (render-table-headings ["Date" "Description" "Account" "Amount"])
       (apply dom/tbody nil
         (let [parts (:entry-parts state)
               parts-count (count parts)]
@@ -171,10 +171,7 @@
                  :onBlur (send! :blur {:last? last?})}))
               (dom/td nil (if last? (dom/button #js {:type "button" :onClick (send! :create)} "Save"))))))))
     (dom/table nil
-      (dom/thead nil
-        (apply dom/tr nil
-          (for [heading ["Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"]]
-            (dom/th nil heading))))
+      (render-table-headings ["Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"])
       (apply dom/tbody nil
         (for [tx (:txs @app-state)
               {:keys [date description to-account amount from-account note]} (tx-tds tx)]
@@ -193,10 +190,7 @@
     "Account: "
     (dom/input #js {:value register-account, :onKeyDown (send! :register)})
     (dom/table nil
-      (dom/thead nil
-        (apply dom/tr nil
-          (for [heading ["Date" "Description" "Amount" "Note"]]
-            (dom/th nil heading))))
+      (render-table-headings ["Date" "Description" "Amount" "Note"])
       (apply dom/tbody nil
         (for [{:keys [date description amount note]} register-parts]
           (dom/tr nil
