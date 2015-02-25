@@ -151,10 +151,13 @@
                    (:parts tx))))
        (apply concat)
        (filter #(= account (:account %)))
-       (map (fn [{:keys [account amount unit] :as part}]
-              (merge part 
-                     {:account (account-key->str account)
-                      :amount (display-amount amount unit)})))))
+       (reduce (fn [parts {:keys [amount unit] :as part}]
+                 (let [totals ((or (peek parts) {}) :totals {})]
+                   (conj parts
+                         (assoc part :totals
+                                (assoc totals unit
+                                       (+ amount (totals unit 0)))))))
+               [])))
 
 (def right-align #js {:style #js {:textAlign "right"}})
 
@@ -221,14 +224,17 @@
     "Account: "
     (dom/input #js {:value register-account, :onKeyDown (send! :register)})
     (dom/table nil
-      (render-table-headings ["Date" "Description" "Amount" "Note"])
+      (render-table-headings ["Date" "Description" "Amount" "Note" "Totals"])
       (apply dom/tbody nil
-        (for [{:keys [date description amount note]} register-parts]
-          (dom/tr nil
+        (for [{:keys [date description amount note unit totals]} register-parts]
+          (apply dom/tr nil
             (dom/td nil date)
             (dom/td nil description)
-            (dom/td right-align amount)
-            (dom/td nil note)))))))
+            (dom/td right-align (display-amount amount unit))
+            (dom/td nil note)
+            (interpose (dom/td nil " + ")
+              (for [[total-unit total-amount] totals]
+                (dom/td right-align (display-amount total-amount total-unit))))))))))
             
 (defn render-export [state]
   (dom/p nil "Export screen coming soon!"))
