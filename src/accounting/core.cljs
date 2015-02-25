@@ -120,6 +120,9 @@
       
 (defn get-price [unit]
   ((peek (:prices @app-state)) unit 1))
+  
+(defn get-value [amount unit]
+  (* amount (get-price unit)))
 
 (defn summarize [txs]
   (->> txs
@@ -130,12 +133,15 @@
                 (map #(assoc part :account (take % account))
                      (range 1 (inc (count account)))))))
        (apply concat)
-       (group-by #(map % [:account :unit]))
-       (map (fn [[[account unit] parts]] 
-              (let [amount (apply + (map :amount parts))]
+       (group-by :account)
+       (map (fn [[account parts]]
+              (let [units (map (fn [[unit parts]] 
+                                 (let [amount (apply + (map :amount parts))]
+                                   {:amount amount, :unit unit, :value (get-value amount unit)}))
+                               (group-by :unit parts))]
                 {:account (account-vec->str account)
-                 :amount (display-amount amount unit)
-                 :value (display-amount (* amount (get-price unit)))})))
+                 :value (display-amount (apply + (map :value units)))
+                 :amounts (map (fn [{:keys [amount unit]}] (display-amount amount unit)) units)})))
        (sort-by :account)))
 
 (defn register-parts [account txs]
@@ -167,13 +173,14 @@
 
 (defn render-summary [summary-rows]
   (dom/table nil
-    (render-table-headings ["Account" "Value" "Amount"])
+    (render-table-headings ["Account" "Value" "Amounts"])
     (apply dom/tbody nil
-      (for [{:keys [account value amount]} summary-rows]
-        (dom/tr nil
+      (for [{:keys [account value amounts]} summary-rows]
+        (apply dom/tr nil
           (dom/td nil account)
           (dom/td right-align value)
-          (dom/td right-align amount))))))
+          (for [amount (interpose " + " amounts)]
+            (dom/td right-align amount)))))))
 
 (defn render-detail [state]
   (dom/div nil
