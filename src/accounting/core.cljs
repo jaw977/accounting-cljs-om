@@ -27,8 +27,9 @@
   
 (def sample-txs [
   {:date "2015/02/17", :description "Starting Cash", :parts [
+    {:account :a-ameritrade, :amount 20000}
     {:account :a-cash, :amount 10000}
-    {:account :i-start, :amount -10000}]}
+    {:account :i-start, :amount -30000}]}
   {:date "2015/02/18", :description "Whole Foods", :parts [
     {:account :e-groceries, :amount 2000}
     {:account :a-cash, :amount -2000}]}
@@ -36,7 +37,14 @@
     {:account :e-groceries, :amount 2000, :note "Food"}
     {:account :e-alcohol, :amount 1000, :note "Beer"}
     {:account :a-cash, :amount -3000}]}
+  {:date "2015/02/20", :description "Ameritrade", :parts
+    [{:account :a-ameritrade, :amount 1000, :unit :SLV}
+     {:account :a-ameritrade, :amount -16000}
+     {:account :e-commission, :amount 1000}]}
 ])
+
+(def sample-prices
+  [{:date "2015/02/20", :SLV 15}])
 
 (defn str->fixpt [s]
   (* s 100))
@@ -65,9 +73,12 @@
     (compare (Math/abs n2) (Math/abs n1))
     (compare n1 n2)))
     
-(defn display-amount [amount unit neg]
-  (str (if unit (str (subs (str unit) 1) " ") "$") 
-       (fixpt->str (if neg (- amount) amount))))
+(defn display-amount
+  ([amount] (display-amount amount nil nil))
+  ([amount unit] (display-amount amount unit nil))
+  ([amount unit neg]
+   (str (if unit (str (subs (str unit) 1) " ") "$") 
+        (fixpt->str (if neg (- amount) amount)))))
 
 (defn tx-tds [tx]
   (let [[from-part to-part :as parts] (sort-by :amount cmp-sign-abs (:parts tx))]
@@ -90,22 +101,26 @@
    {:account "", :amount ""}])
 
 (def app-state (atom 
-  {:screen :import
+  {:screen :summary
    :txs sample-txs 
+   :prices sample-prices
    :register-parts []
    :entry-parts empty-entry-parts}))
 
 (defn store-event [ev]
   {:target (aget ev "target")
-   :key-code (.-keyCode ev)
    :target-value (aget ev "target" "value")})
 
 (defn send! 
   ([type] (send! type {}))
   ([type arg]
     (fn [ev]
-      (put! channel [type (store-event ev) arg]))))
+      (if (or (not= "keydown" (.-type ev)) (= 13 (.-keyCode ev)))
+        (put! channel [type (store-event ev) arg])))))
       
+(defn get-price [unit]
+  ((peek (:prices @app-state)) unit 1))
+
 (defn summarize [txs]
   (->> txs
        (map :parts)
@@ -117,8 +132,10 @@
        (apply concat)
        (group-by #(map % [:account :unit]))
        (map (fn [[[account unit] parts]] 
-              {:account (account-vec->str account), 
-               :amount (display-amount (apply + (map :amount parts)) unit)}))
+              (let [amount (apply + (map :amount parts))]
+                {:account (account-vec->str account)
+                 :amount (display-amount amount unit)
+                 :value (display-amount (* amount (get-price unit)))})))
        (sort-by :account)))
 
 (defn register-parts [account txs]
@@ -133,9 +150,15 @@
                      {:account (account-key->str account)
                       :amount (display-amount amount unit)})))))
 
+(def right-align #js {:style #js {:textAlign "right"}})
+
 (defn render-import [state]
-  (dom/textarea #js {:onKeyDown (send! :import) :rows 25 :cols 100}))
-  
+  (dom/div nil
+    (dom/p nil "Import transaction data:")
+    (dom/textarea #js {:onKeyDown (send! :import-txs) :rows 20 :cols 100})
+    (dom/p nil "Import price data:")
+    (dom/textarea #js {:onKeyDown (send! :import-prices) :rows 20 :cols 100})))
+
 (defn render-table-headings [headings]
   (dom/thead nil
     (apply dom/tr nil
@@ -144,12 +167,13 @@
 
 (defn render-summary [summary-rows]
   (dom/table nil
-    (render-table-headings ["Account" "Amount"])
+    (render-table-headings ["Account" "Value" "Amount"])
     (apply dom/tbody nil
-      (for [{:keys [account amount]} summary-rows]
+      (for [{:keys [account value amount]} summary-rows]
         (dom/tr nil
           (dom/td nil account)
-          (dom/td #js {:style #js {:textAlign "right"}} amount))))))
+          (dom/td right-align value)
+          (dom/td right-align amount))))))
 
 (defn render-detail [state]
   (dom/div nil
@@ -196,13 +220,16 @@
           (dom/tr nil
             (dom/td nil date)
             (dom/td nil description)
-            (dom/td nil amount)
+            (dom/td right-align amount)
             (dom/td nil note)))))))
+            
+(defn render-export [state]
+  (dom/p nil "Export screen coming soon!"))
 
 (defn render-menu [current-screen]
   (apply dom/p nil
     (interpose " \u00A0 "
-      (for [title ["Import" "Summary" "Detail" "Register"]
+      (for [title ["Import" "Summary" "Detail" "Register" "Export"]
             :let [screen (keyword (.toLowerCase title))]]
         (if (= screen current-screen)
           (dom/span #js {:style #js {:fontWeight "bold"}} title)
@@ -213,6 +240,7 @@
     (render-menu screen)
     (case screen
       :import (render-import state)
+      :export (render-export state)
       :summary (render-summary (summarize txs))
       :detail (render-detail state)
       :register (render-register state))))
@@ -274,6 +302,10 @@
         (map normalize-transaction
              (cljs.reader/read-string target-value))))
 
+(defn import-prices [{:keys [target-value]}]
+  ;(map #(update-in % [:amount] str->fixpt)
+       (cljs.reader/read-string target-value));)
+
 (defn create-transaction [{:keys [date description accounts amounts]}]
   {:date date
    :description description
@@ -304,10 +336,9 @@
       (let [[type ev arg] (<! channel)]
         (case type
           :screen (om/update! app [:screen] arg)
-          :import (if (= 13 (:key-code ev)) 
-            (om/transact! app #(merge % {:screen :summary, :txs (import-transactions ev %)})))
-          :register (if (= 13 (:key-code ev))
-            (om/update! app [:register-parts] (register-parts (str->account (:target-value ev)) (:txs @app-state))))
+          :import-txs (om/transact! app #(merge % {:screen :summary, :txs (import-transactions ev %)}))
+          :import-prices (om/transact! app #(merge % {:screen :summary, :prices (import-prices ev %)}))
+          :register (om/update! app [:register-parts] (register-parts (str->account (:target-value ev)) (:txs @app-state)))
           :create (om/transact! app [:txs] #(conj % (create-transaction (get-inputs-state))))
           :change (om/transact! app [:entry-parts] #(change-part-field ev arg %))
           :blur (om/transact! app [:entry-parts] #(blur-amount ev arg %)))))))
@@ -324,5 +355,9 @@
   [["2015/02/23" "Whole Foods" :e-groceries 25 :l-amex]
    ["2015/02/24" "Trader Joe's" :e-groceries 20 :e-alcohol 10 :l-amex]
    ["2015/02/25" "Ameritrade" :a-ameritrade [100 :GLD] :a-ameritrade -10010]]
+
+  [{:date "2015/02/20", :SLV 15, :GLD 100 }
+   {:date "2015/02/21", :SLV 15.20, :GLD 103 }]
+
 )   
     
