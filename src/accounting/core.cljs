@@ -101,9 +101,9 @@
    {:account "", :amount ""}])
 
 (def app-state (atom 
-  {:screen :summary
-   :txs sample-txs 
-   :prices sample-prices
+  {:screen :import
+   :txs []
+   :prices [{}]
    :register-parts []
    :entry-parts empty-entry-parts}))
 
@@ -160,12 +160,26 @@
                [])))
 
 (def right-align #js {:style #js {:textAlign "right"}})
+(def top-align #js {:style #js {:verticalAlign "text-top"}})
 
 (defn render-import [state]
   (dom/div nil
-    (dom/p nil "Import transaction data:")
-    (dom/textarea #js {:onKeyDown (send! :import-txs) :rows 20 :cols 100})
-    (dom/p nil "Import price data:")
+    (dom/table nil
+      (dom/tr nil
+        (dom/td nil
+          (dom/p nil "Import transactions:  Paste data in the text area and press enter.  Example data: →")
+          (dom/textarea #js {:onKeyDown (send! :import-txs) :rows 20 :cols 100}))
+        (dom/td top-align
+          (dom/pre nil 
+            "[\n"
+            "[\"2014-02-24\" \"Starting Equity\" :assets-cash 100 :assets-etrade 2000 :equity]\n"
+            "[\"2014-02-25\" \"Trader Joe's\" :expenses-groceries 25 :assets-cash]\n"
+            "[\"2014-02-26\" \"E*Trade\" :assets-etrade [10 :GLD] :expenses-commissions 10 :assets-etrade -1167]\n"
+            "[\"2014-02-27\" \"Whole Foods\" :expenses-groceries 30 :liabilities-visa]\n"
+            "[\"2014-02-28\" \"Paycheck\" :assets-bank 1000 :income-job]\n"
+            "]\n"))))
+    (dom/p nil "Import asset values:  Paste data and press enter.  Example Data:  "
+      (dom/span #js {:style #js {:fontFamily "monospace"}} "[{:GLD 115.70}]"))
     (dom/textarea #js {:onKeyDown (send! :import-prices) :rows 20 :cols 100})))
 
 (defn render-table-headings [headings]
