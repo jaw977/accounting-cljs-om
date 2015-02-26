@@ -4,65 +4,13 @@
             [om.dom :as dom :include-macros true]
             [clojure.string :as str]
             [cljs.reader]
-            [cljs.core.async :refer [put! chan <!]]))
+            [cljs.core.async :refer [put! chan <!]]
+            [accounting.util :refer [assoc-last update-last ucfirst log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]))
 
 (enable-console-print!)
 
-(defn assoc-last [xs ks x]
-  (assoc-in xs (into [(dec (count xs))] ks) x))
-
-(defn update-last [xs ks f & args]
-  (apply update-in xs (into [(dec (count xs))] ks) f args))
-
-(defn ucfirst [s] 
-  (str (.toUpperCase (first s)) (subs s 1)))
-
-(defn log [x]
-  (.log js/console x))
-  
-(defn log-clj [x]
-  (log (clj->js x)))
-
 (def channel (chan))
   
-(def sample-txs [
-  {:date "2015/02/17", :description "Starting Cash", :parts [
-    {:account :a-ameritrade, :amount 20000}
-    {:account :a-cash, :amount 10000}
-    {:account :i-start, :amount -30000}]}
-  {:date "2015/02/18", :description "Whole Foods", :parts [
-    {:account :e-groceries, :amount 2000}
-    {:account :a-cash, :amount -2000}]}
-  {:date "2015/02/19", :description "Whole Foods", :parts [
-    {:account :e-groceries, :amount 2000, :note "Food"}
-    {:account :e-alcohol, :amount 1000, :note "Beer"}
-    {:account :a-cash, :amount -3000}]}
-  {:date "2015/02/20", :description "Ameritrade", :parts
-    [{:account :a-ameritrade, :amount 1000, :unit :SLV}
-     {:account :a-ameritrade, :amount -16000}
-     {:account :e-commission, :amount 1000}]}
-])
-
-(def sample-prices
-  [{:date "2015/02/20", :SLV 15}])
-
-(defn str->fixpt [s]
-  (* s 100))
-  
-(defn fixpt->str [n]
-  (.toFixed (/ n 100) 2))
-  
-(defn account-key->vec [account]
-  (str/split (subs (str account) 1) "-"))
-
-(defn account-vec->str [account]
-  (str/join "." (map ucfirst account)))
-
-(def account-key->str (comp account-vec->str account-key->vec))
-
-(defn str->account [account]
-  (keyword (str/join "-" (map #(.toLowerCase %) (str/split account ".")))))
-
 (defn single-row-tx? [[part1 part2 :as parts]]
   (and (= 2 (count parts))
        (= (- (:amount part1)) (:amount part2))
