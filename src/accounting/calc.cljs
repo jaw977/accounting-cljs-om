@@ -12,7 +12,9 @@
   ([amount unit] (display-amount amount unit nil))
   ([amount unit neg]
    (str (if unit (str (subs (str unit) 1) " ") "$") 
-        (fixpt->str (if neg (- amount) amount)))))
+        (.replace (fixpt->str (if neg (- amount) amount))
+                  (js/RegExp. "\\B(?=(\\d{3})+(?!\\d))" "g")
+                  ","))))
 
 (defn summarize [txs prices]
   (->> txs

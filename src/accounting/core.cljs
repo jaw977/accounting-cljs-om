@@ -64,7 +64,7 @@
     (vector? x) {:amount (str->fixpt (nth x 0)) :unit (nth x 1)}
     :else {}))
         
-(defn update-parts [m parts]
+(defn update-parts [parts m]
   (let [last-part (peek parts)]
     (cond
       (:account m) (conj parts m)
@@ -74,18 +74,21 @@
 
 (defn normalize-transaction [[date desc & tx]]
   (loop [[x & xs] tx
-         balance-amount 0
+         balance-amounts {}
          parts []]
     (if x
-      (let [m (read-transaction-element x)]
+      (let [{:keys [amount unit] :or {amount 0} :as m} (read-transaction-element x)]
         (recur xs
-               (- balance-amount (or (:amount m) 0))
-               (update-parts m parts)))
+               (assoc balance-amounts unit (- (balance-amounts unit 0) amount))
+               (update-parts parts m)))
       (let [last-amount-ks [(dec (count parts)) :amount]
             out-tx {:date date, :description desc, :parts parts}]
         (if (get-in parts last-amount-ks)
           out-tx
-          (assoc-in out-tx (into [:parts] last-amount-ks) balance-amount))))))
+          (assoc out-tx :parts 
+                 (reduce update-parts parts
+                         (map (fn [[unit amount]] {:unit unit :amount amount})
+                              balance-amounts))))))))
 
 (defn import-transactions [{:keys [target-value]} {:keys [txs]}]
   (into txs
