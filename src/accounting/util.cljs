@@ -32,4 +32,3 @@
 
 (defn str->account [account]
   (keyword (str/join "-" (map #(.toLowerCase %) (str/split account ".")))))
-
