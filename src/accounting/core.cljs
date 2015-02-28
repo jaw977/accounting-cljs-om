@@ -72,6 +72,11 @@
       (:amount last-part) (conj parts (merge m {:account (:account last-part)}))
       :else (update-last parts [] merge m))))
 
+(defn date->int [date]
+  (if (number? date)
+    date
+    (js/parseInt (.replace date (js/RegExp. "[^0-9]" "g") ""))))
+
 (defn normalize-transaction [[date desc & tx]]
   (loop [[x & xs] tx
          balance-amounts {}
@@ -82,7 +87,7 @@
                (assoc balance-amounts unit (- (balance-amounts unit 0) amount))
                (update-parts parts m)))
       (let [last-amount-ks [(dec (count parts)) :amount]
-            out-tx {:date date, :description desc, :parts parts}]
+            out-tx {:date (date->int date), :description desc, :parts parts}]
         (if (get-in parts last-amount-ks)
           out-tx
           (assoc out-tx :parts 
@@ -99,7 +104,7 @@
   (cljs.reader/read-string target-value))
 
 (defn create-transaction [{:keys [date description accounts amounts]}]
-  {:date date
+  {:date (date->int date)
    :description description
    :parts (map (fn [account amount] {:account (str->account account), :amount (str->fixpt amount)})
                accounts

@@ -17,11 +17,11 @@
         (dom/td top-align
           (dom/pre nil 
             "[\n"
-            "[\"2014-02-24\" \"Starting Equity\" :assets-cash 100 :assets-etrade 2000 :equity]\n"
-            "[\"2014-02-25\" \"Trader Joe's\" :expenses-groceries 25 :assets-cash]\n"
+            "[20140224 StartingEquity :assets-cash 100 :assets-etrade 2000 :equity]\n"
+            "[20140225 TraderJoes :expenses-groceries 25 :assets-cash]\n"
             "[\"2014-02-26\" \"E*Trade\" :assets-etrade [10 :GLD] :expenses-commissions 10 :assets-etrade -1167]\n"
             "[\"2014-02-27\" \"Whole Foods\" :expenses-groceries 30 :liabilities-visa]\n"
-            "[\"2014-02-28\" \"Paycheck\" :assets-bank 1000 :income-job]\n"
+            "[\"2014/02/28\" Paycheck :assets-bank 1000 :income-job]\n"
             "]\n"))))
     (dom/p nil "Import asset values:  Paste data and press enter.  Example Data:  "
       (dom/span #js {:style #js {:fontFamily "monospace"}} "[{:GLD 115.70}]"))
@@ -63,6 +63,18 @@
                :onBlur (send! :blur {:last? last?})}))
             (dom/td nil (if last? (dom/button #js {:type "button" :onClick (send! :create)} "Save")))))))))
             
+(defn camelcase-symbol->str [sym]
+  (if (symbol? sym)
+    (.replace (str sym)
+              (js/RegExp. "([a-z])([A-Z])" "g")
+              "$1 $2")
+    (str sym)))
+
+(defn format-date [date]
+  (if date
+    (let [date (str date)]
+      (str (subs date 0 4) "/" (subs date 4 6) "/" (subs date 6)))))
+
 (defn detail [txs]
   (dom/table nil
     (table-headings ["Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"])
@@ -70,8 +82,8 @@
       (for [tx txs
             {:keys [date description to-account amount from-account note]} (calc/tx-detail-rows tx)]
         (dom/tr nil
-          (dom/td nil date)
-          (dom/td nil description)
+          (dom/td nil (format-date date))
+          (dom/td nil (camelcase-symbol->str description))
           (dom/td nil (account-key->str to-account))
           (dom/td nil (if to-account "←"))
           (dom/td right-align amount)
@@ -88,8 +100,8 @@
       (apply dom/tbody nil
         (for [{:keys [date description amount note unit totals]} register-parts]
           (apply dom/tr nil
-            (dom/td nil date)
-            (dom/td nil description)
+            (dom/td nil (format-date date))
+            (dom/td nil (camelcase-symbol->str description))
             (dom/td right-align (calc/display-amount amount unit))
             (dom/td nil note)
             (interpose (dom/td nil " + ")
