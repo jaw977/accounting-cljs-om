@@ -34,18 +34,19 @@
         (dom/th nil heading)))))
 
 (defn summary [summary-rows]
-  (dom/table nil
-    (table-headings ["Account" "Value" "Amounts"])
-    (apply dom/tbody nil
-      (for [{:keys [account value amounts]} summary-rows]
-        (apply dom/tr nil
-          (dom/td nil account)
-          (dom/td right-align value)
-          (for [amount (interpose " + " amounts)]
-            (dom/td right-align amount)))))))
+  (let [max-amounts (apply max (map (comp count :amounts) summary-rows))]
+    (dom/table #js {:className "table"}
+      (table-headings (into ["Account" "Value" "Amounts"] (repeat (* 2 (dec max-amounts)) "")))
+      (apply dom/tbody nil
+        (for [{:keys [account value amounts]} summary-rows]
+          (apply dom/tr nil
+            (dom/td nil account)
+            (dom/td right-align value)
+            (for [amount (into (vec (interpose " + " amounts)) (repeat (* 2 (- max-amounts (count amounts))) ""))]
+              (dom/td right-align amount))))))))
 
 (defn entry [state send!]
-  (dom/table nil
+  (dom/table #js {:className "table"}
     (table-headings ["Date" "Description" "Account" "Amount"])
     (apply dom/tbody nil
       (let [parts (:entry-parts state)
@@ -76,7 +77,7 @@
       (str (subs date 0 4) "/" (subs date 4 6) "/" (subs date 6)))))
 
 (defn detail [txs]
-  (dom/table nil
+  (dom/table #js {:className "table"}
     (table-headings ["Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"])
     (apply dom/tbody nil
       (for [tx txs
@@ -93,9 +94,8 @@
 
 (defn register [{:keys [register-account register-parts] :as state} send!]
   (dom/div nil
-    "Account: "
-    (dom/input #js {:value register-account, :onKeyDown (send! :register)})
-    (dom/table nil
+    (dom/p nil "Account: " (dom/input #js {:value register-account, :onKeyDown (send! :register)}))
+    (dom/table #js {:className "table"}
       (table-headings ["Date" "Description" "Amount" "Note" "Totals"])
       (apply dom/tbody nil
         (for [{:keys [date description amount note unit totals]} register-parts]
