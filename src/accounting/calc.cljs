@@ -39,7 +39,7 @@
 (defn single-row-tx? [[part1 part2 :as parts]]
   (and (= 2 (count parts))
        (= (- (:amount part1)) (:amount part2))
-       (= (:note part1) (:note part2))))
+       (or (not (:note part1)) (not (:note part2)) (= (:note part1) (:note part2)))))
 
 (defn cmp-sign-abs [n1 n2]
   (if (= (compare n1 0) (compare n2 0))
@@ -53,7 +53,7 @@
         [{:to-account (:account to-part)
           :from-account (:account from-part)
           :amount (display-amount (:amount to-part) (:unit to-part))
-          :note (:note to-part)}]
+          :note (or (:note to-part) (:note from-part))}]
         (vec
           (for [{:keys [account amount unit note]} parts
                 :let [pos (pos? amount)]]
