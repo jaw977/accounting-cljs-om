@@ -22,6 +22,8 @@
    :txs []
    :prices [{}]
    :register-parts []
+   :summary-account ""
+   :register-account ""
    :entry-parts empty-entry-parts}))
 
 (defn store-event [ev]
@@ -130,12 +132,14 @@
 (defn handle-events [app owner]
   (go
     (while true
-      (let [[type ev arg] (<! channel)]
+      (let [[type {:keys [target-value] :as ev} arg] (<! channel)]
         (case type
           :screen (om/update! app [:screen] arg)
           :import-txs (om/transact! app #(merge % {:screen :summary, :txs (import-transactions ev %)}))
           :import-prices (om/transact! app #(merge % {:screen :summary, :prices (import-prices ev %)}))
-          :register (om/update! app [:register-parts] (calc/register-parts (str->account (:target-value ev)) (:txs @app-state)))
+          :summary-change (om/update! app [:summary-account] target-value)
+          :register-change (om/update! app [:register-account] target-value)
+          :register-keydown (om/update! app [:register-parts] (calc/register-parts (str->account target-value) (:txs @app-state)))
           :create (om/transact! app [:txs] #(conj % (create-transaction (get-inputs-state))))
           :change (om/transact! app [:entry-parts] #(change-part-field ev arg %))
           :blur (om/transact! app [:entry-parts] #(blur-amount ev arg %)))))))

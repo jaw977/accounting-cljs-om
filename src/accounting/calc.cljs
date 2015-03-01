@@ -16,7 +16,7 @@
                   (js/RegExp. "\\B(?=(\\d{3})+(?!\\d))" "g")
                   ","))))
 
-(defn summarize [txs prices]
+(defn summarize [account-filter txs prices]
   (->> txs
        (map :parts)
        (apply concat)
@@ -25,6 +25,7 @@
                 (map #(assoc part :account (take % account))
                      (range 1 (inc (count account)))))))
        (apply concat)
+       (filter #(re-find (js/RegExp. account-filter) (account-vec->str (:account %))))
        (group-by :account)
        (map (fn [[account parts]]
               (let [units (map (fn [[unit parts]] 

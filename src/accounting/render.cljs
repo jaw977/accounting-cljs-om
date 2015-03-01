@@ -33,17 +33,21 @@
       (for [heading headings]
         (dom/th nil heading)))))
 
-(defn summary [summary-rows]
-  (let [max-amounts (apply max (map (comp count :amounts) summary-rows))]
-    (dom/table #js {:className "table"}
-      (table-headings (into ["Account" "Value" "Amounts"] (repeat (* 2 (dec max-amounts)) "")))
-      (apply dom/tbody nil
-        (for [{:keys [account value amounts]} summary-rows]
-          (apply dom/tr nil
-            (dom/td nil account)
-            (dom/td right-align value)
-            (for [amount (into (vec (interpose " + " amounts)) (repeat (* 2 (- max-amounts (count amounts))) ""))]
-              (dom/td right-align amount))))))))
+(defn summary [{:keys [summary-account txs prices]} send!]
+  (let [summary-rows (calc/summarize summary-account txs prices)
+        max-amounts (apply max (map (comp count :amounts) summary-rows))]
+    (log-clj summary-rows)
+    (dom/div nil 
+      (dom/p nil "Account (js RegExp): " (dom/input #js {:value summary-account, :onChange (send! :summary-change), :onKeyDown (send! :summary-keydown)}))
+      (dom/table #js {:className "table"}
+        (table-headings (into ["Account" "Value" "Amounts"] (repeat (* 2 (dec max-amounts)) "")))
+        (apply dom/tbody nil
+          (for [{:keys [account value amounts]} summary-rows]
+            (apply dom/tr nil
+              (dom/td nil account)
+              (dom/td right-align value)
+              (for [amount (into (vec (interpose " + " amounts)) (repeat (* 2 (- max-amounts (count amounts))) ""))]
+                (dom/td right-align amount)))))))))
 
 (defn entry [state send!]
   (dom/table #js {:className "table"}
@@ -94,7 +98,7 @@
 
 (defn register [{:keys [register-account register-parts] :as state} send!]
   (dom/div nil
-    (dom/p nil "Account: " (dom/input #js {:value register-account, :onKeyDown (send! :register)}))
+    (dom/p nil "Account: " (dom/input #js {:value register-account, :onChange (send! :register-change), :onKeyDown (send! :register-keydown)}))
     (dom/table #js {:className "table"}
       (table-headings ["Date" "Description" "Amount" "Note" "Totals"])
       (apply dom/tbody nil
@@ -120,13 +124,13 @@
           (dom/span #js {:style #js {:fontWeight "bold"}} title)
           (dom/a #js {:onClick (send! :screen screen) :href "#"} title))))))
            
-(defn screen [{:keys [screen txs prices] :as state} send!]
+(defn screen [{:keys [screen txs] :as state} send!]
   (dom/div nil
     (menu screen send!) 
     (case screen
       :import (import send!)
       :export (export state)
-      :summary (summary (calc/summarize txs prices))
+      :summary (summary state send!)
       :detail (dom/div nil
         (entry state send!)
         (detail txs))
