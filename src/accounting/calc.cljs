@@ -7,35 +7,44 @@
 (defn get-value [amount unit prices]
   (* amount (get-price unit prices)))
 
+(defn display-unit [unit]
+  (if unit
+    (str (subs (str unit) 1) " ")
+    "$"))
+
 (defn display-amount
   ([amount] (display-amount amount nil nil))
   ([amount unit] (display-amount amount unit nil))
   ([amount unit neg]
-   (str (if unit (str (subs (str unit) 1) " ") "$") 
+   (str (display-unit unit)
         (.replace (fixpt->str (if neg (- amount) amount))
                   (js/RegExp. "\\B(?=(\\d{3})+(?!\\d))" "g")
                   ","))))
 
-(defn summarize [account-filter txs prices]
+(defn summarize [account-filter groupby txs prices]
   (->> txs
        (map :parts)
        (apply concat)
        (map (fn [part]
               (let [account (account-key->vec (:account part))]
                 (map #(assoc part :account (take % account))
-                     (range 1 (inc (count account)))))))
+                     (if (= groupby :account)
+                       (range 1 (inc (count account)))
+                       [(count account)])))))
        (apply concat)
        (filter #(re-find (js/RegExp. account-filter) (account-vec->str (:account %))))
-       (group-by :account)
-       (map (fn [[account parts]]
+       (group-by groupby)
+       (map (fn [[group parts]]
               (let [units (map (fn [[unit parts]] 
                                  (let [amount (apply + (map :amount parts))]
                                    {:amount amount, :unit unit, :value (get-value amount unit prices)}))
                                (group-by :unit parts))]
-                {:account (account-vec->str account)
+                {:group (if (= groupby :account) 
+                          (account-vec->str group)
+                          (display-unit group))
                  :value (display-amount (apply + (map :value units)))
                  :amounts (map (fn [{:keys [amount unit]}] (display-amount amount unit)) units)})))
-       (sort-by :account)))
+       (sort-by :group)))
 
 (defn single-row-tx? [[part1 part2 :as parts]]
   (and (= 2 (count parts))

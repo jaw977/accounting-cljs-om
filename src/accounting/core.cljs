@@ -23,6 +23,7 @@
    :prices [{}]
    :register-parts []
    :summary-account ""
+   :summary-groupby :account
    :register-account ""
    :entry-parts empty-entry-parts}))
 
@@ -135,6 +136,7 @@
       (let [[type {:keys [target-value] :as ev} arg] (<! channel)]
         (case type
           :screen (om/update! app [:screen] arg)
+          :summary-groupby (om/update! app [:summary-groupby] arg)
           :import-txs (om/transact! app #(merge % {:screen :summary, :txs (import-transactions ev %)}))
           :import-prices (om/transact! app #(merge % {:screen :summary, :prices (import-prices ev %)}))
           :summary-change (om/update! app [:summary-account] target-value)

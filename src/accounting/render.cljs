@@ -33,18 +33,27 @@
       (for [heading headings]
         (dom/th nil heading)))))
 
-(defn summary [{:keys [summary-account txs prices]} send!]
-  (let [summary-rows (calc/summarize summary-account txs prices)
+(defn menu [desc titles current-screen send! event-type]
+  (apply dom/p nil desc
+    (interpose " \u00A0 "
+      (for [title titles
+            :let [screen (keyword (.toLowerCase title))]]
+        (if (= screen current-screen)
+          (dom/span #js {:style #js {:fontWeight "bold"}} title)
+          (dom/a #js {:onClick (send! event-type screen) :href "#"} title))))))
+
+(defn summary [{:keys [summary-account summary-groupby txs prices]} send!]
+  (let [summary-rows (calc/summarize summary-account summary-groupby txs prices)
         max-amounts (apply max (map (comp count :amounts) summary-rows))]
-    (log-clj summary-rows)
     (dom/div nil 
+      (menu "Group By: " ["Account" "Unit"] summary-groupby send! :summary-groupby)
       (dom/p nil "Account (js RegExp): " (dom/input #js {:value summary-account, :onChange (send! :summary-change), :onKeyDown (send! :summary-keydown)}))
       (dom/table #js {:className "table"}
-        (table-headings (into ["Account" "Value" "Amounts"] (repeat (* 2 (dec max-amounts)) "")))
+        (table-headings (into [(if (= summary-groupby :account) "Account" "Unit") "Value" "Amounts"] (repeat (* 2 (dec max-amounts)) "")))
         (apply dom/tbody nil
-          (for [{:keys [account value amounts]} summary-rows]
+          (for [{:keys [group value amounts]} summary-rows]
             (apply dom/tr nil
-              (dom/td nil account)
+              (dom/td (if (= summary-groupby :unit) right-align) group)
               (dom/td right-align value)
               (for [amount (into (vec (interpose " + " amounts)) (repeat (* 2 (- max-amounts (count amounts))) ""))]
                 (dom/td right-align amount)))))))))
@@ -114,19 +123,10 @@
             
 (defn export [state]
   (dom/p nil "Export screen coming soon!"))
-
-(defn menu [current-screen send!]
-  (apply dom/p nil
-    (interpose " \u00A0 "
-      (for [title ["Import" "Summary" "Detail" "Register" "Export"]
-            :let [screen (keyword (.toLowerCase title))]]
-        (if (= screen current-screen)
-          (dom/span #js {:style #js {:fontWeight "bold"}} title)
-          (dom/a #js {:onClick (send! :screen screen) :href "#"} title))))))
            
 (defn screen [{:keys [screen txs] :as state} send!]
   (dom/div nil
-    (menu screen send!) 
+    (menu "" ["Import" "Summary" "Detail" "Register" "Export"] screen send! :screen) 
     (case screen
       :import (import send!)
       :export (export state)
