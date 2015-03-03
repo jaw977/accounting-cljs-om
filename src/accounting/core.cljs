@@ -5,7 +5,7 @@
             [clojure.string :as str]
             [cljs.reader]
             [cljs.core.async :refer [put! chan <!]]
-            [accounting.util :refer [assoc-last update-last ucfirst log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]
+            [accounting.util :refer [assoc-last update-last ucfirst log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account today]]
             [accounting.render :as render]
             [accounting.calc :as calc]))
 
@@ -14,8 +14,8 @@
 (def channel (chan))
   
 (def empty-entry-parts
-  [{:account "", :amount "", :first? true}
-   {:account "", :amount ""}])
+  [{:account "", :amount "", :note "", :first? true}
+   {:account "", :amount "", :note ""}])
 
 (def app-state (atom 
   {:screen :import
@@ -25,6 +25,8 @@
    :summary-account ""
    :summary-groupby :account
    :register-account ""
+   :entry-date (today)
+   :entry-description ""
    :entry-parts empty-entry-parts}))
 
 (defn store-event [ev]
@@ -38,27 +40,6 @@
       (if (or (not= "keydown" (.-type ev)) (= 13 (.-keyCode ev)))
         (put! channel [type (store-event ev) arg])))))
       
-(defn dom-el [id]
-  (.getElementById js/document id))
-
-(defn dom-el-val [id]
-  (.-value (dom-el id)))
-  
-(defn dom-els [name]
-  (.getElementsByName js/document name))
-  
-(defn dom-els-vals [name]
-  (let [els (dom-els name)]
-    (map #(aget els % "value")
-         (range (.-length els)))))
-
-(defn get-inputs-state []
-  {:date (dom-el-val "date") 
-   :description (dom-el-val "description")
-   :accounts (dom-els-vals "account")
-   :amounts (dom-els-vals "amount")
-})
-
 (defn read-transaction-element [x]
   (cond
     (number? x) {:amount (str->fixpt x)}
@@ -105,19 +86,28 @@
 
 (defn import-prices [{:keys [target-value]} _]
   (cljs.reader/read-string target-value))
+  
+(defn str->amount-unit [s]
+  (let [[amount unit] (str/split s #"\s+" 2)]
+    {:amount (str->fixpt amount), :unit (keyword unit)}))
 
-(defn create-transaction [{:keys [date description accounts amounts]}]
-  {:date (date->int date)
-   :description description
-   :parts (map (fn [account amount] {:account (str->account account), :amount (str->fixpt amount)})
-               accounts
-               amounts)}) 
+(defn change-entry-input [ks s state]
+  (assoc (assoc-in state ks s)
+         :entry-status :editing))
+
+(defn create-transaction [{:keys [txs entry-date entry-description entry-parts] :as state}]
+  (merge state 
+         {:entry-date (today), :entry-description "", :entry-parts empty-entry-parts, :entry-status :complete
+          :txs (conj txs
+                     {:date (date->int entry-date)
+                      :description entry-description
+                      :parts (for [{:keys [account amount note]} entry-parts
+                                   :when (and (seq account) (seq amount))]
+                               (merge {:account (str->account account), :note note}
+                                      (str->amount-unit amount)))})}))
 
 (defn balance-amount [parts]
   (- (apply + (map (comp str->fixpt :amount) parts))))
-
-(defn change-part-field [{:keys [target-value]} {:keys [index field]} parts]
-  (assoc-in parts [index field] target-value))
 
 (defn blur-amount [ev {:keys [last?]} parts]
   (let [balance (balance-amount parts)]
@@ -125,10 +115,12 @@
       parts
       (assoc-last 
         (if last?
-          (conj parts {:account "", :amount ""})
+          (conj parts {:account "", :amount "", :note ""})
           parts)
         [:amount]
-        (fixpt->str balance)))))
+        (if (js/isNaN balance)
+          ""
+          (fixpt->str balance))))))
            
 (defn handle-events [app owner]
   (go
@@ -136,14 +128,14 @@
       (let [[type {:keys [target-value] :as ev} arg] (<! channel)]
         (case type
           :screen (om/update! app [:screen] arg)
-          :summary-groupby (om/update! app [:summary-groupby] arg)
           :import-txs (om/transact! app #(merge % {:screen :summary, :txs (import-transactions ev %)}))
           :import-prices (om/transact! app #(merge % {:screen :summary, :prices (import-prices ev %)}))
+          :summary-groupby (om/update! app [:summary-groupby] arg)
           :summary-change (om/update! app [:summary-account] target-value)
           :register-change (om/update! app [:register-account] target-value)
           :register-keydown (om/update! app [:register-parts] (calc/register-parts (str->account target-value) (:txs @app-state)))
-          :create (om/transact! app [:txs] #(conj % (create-transaction (get-inputs-state))))
-          :change (om/transact! app [:entry-parts] #(change-part-field ev arg %))
+          :entry-change (om/transact! app #(change-entry-input arg target-value %))
+          :entry-create (om/transact! app create-transaction)
           :blur (om/transact! app [:entry-parts] #(blur-amount ev arg %)))))))
 
 (om/root 

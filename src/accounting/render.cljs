@@ -58,24 +58,30 @@
               (for [amount (into (vec (interpose " + " amounts)) (repeat (* 2 (- max-amounts (count amounts))) ""))]
                 (dom/td right-align amount)))))))))
 
-(defn entry [state send!]
-  (dom/table #js {:className "table"}
-    (table-headings ["Date" "Description" "Account" "Amount"])
-    (apply dom/tbody nil
-      (let [parts (:entry-parts state)
-            parts-count (count parts)]
-        (for [parts-index (range parts-count)
-              :let [{:keys [account amount first?]} (nth parts parts-index)
-                    last? (= parts-index (dec parts-count))]]
-          (dom/tr nil
-            (dom/td nil (if first? (dom/input #js {:id "date"})))
-            (dom/td nil (if first? (dom/input #js {:id "description"})))
-            (dom/td nil (dom/input #js {:name "account"}))
-            (dom/td nil (dom/input #js 
-              {:name "amount", :value amount 
-               :onChange (send! :change {:field :amount, :index parts-index}) 
-               :onBlur (send! :blur {:last? last?})}))
-            (dom/td nil (if last? (dom/button #js {:type "button" :onClick (send! :create)} "Save")))))))))
+(defn entry [{:keys [entry-date entry-description entry-parts entry-status]} send!]
+  (dom/div nil
+    (dom/p nil (cond
+                 (= entry-status :complete) "Transaction Created!"
+                 (= entry-status :editing) "You are currently creating a transaction.  It will not be saved until you click the Save button."
+                 :else "Create a new transaction by entering in data below."))
+    (dom/p nil "Amount:  Enter a plain number for a dollar amount (e.g. \"20\" for $20), or a number followed by symbol for a different asset (e.g. \"10 AAPL\" for 10 shares of AAPL).")
+    (dom/table #js {:className "table"}
+      (table-headings ["Date" "Description" "Account" "Amount" "Note" ""])
+      (apply dom/tbody nil
+        (let [parts-count (count entry-parts)]
+          (for [parts-index (range parts-count)
+                :let [{:keys [account amount note first?]} (nth entry-parts parts-index)
+                      last? (= parts-index (dec parts-count))]]
+            (dom/tr nil
+              (dom/td nil (if first? (dom/input #js {:value entry-date, :size 10, :onChange (send! :entry-change [:entry-date])})))
+              (dom/td nil (if first? (dom/input #js {:value entry-description, :onChange (send! :entry-change [:entry-description])})))
+              (dom/td nil (dom/input #js {:value account, :onChange (send! :entry-change [:entry-parts parts-index :account])}))
+              (dom/td nil (dom/input #js 
+                {:value amount, :size 10
+                 :onChange (send! :entry-change [:entry-parts parts-index :amount])
+                 :onBlur (send! :blur {:last? last?})}))
+              (dom/td nil (dom/input #js {:value note, :onChange (send! :entry-change [:entry-parts parts-index :note])}))
+              (dom/td nil (if last? (dom/button #js {:type "button" :onClick (send! :entry-create)} "Save") " ")))))))))
             
 (defn camelcase-symbol->str [sym]
   (if (symbol? sym)
@@ -126,14 +132,13 @@
            
 (defn screen [{:keys [screen txs] :as state} send!]
   (dom/div nil
-    (menu "" ["Import" "Summary" "Detail" "Register" "Export"] screen send! :screen) 
+    (menu "" ["Import" "Summary" "Detail" "Entry" "Register" "Export"] screen send! :screen) 
     (case screen
       :import (import send!)
       :export (export state)
       :summary (summary state send!)
-      :detail (dom/div nil
-        (entry state send!)
-        (detail txs))
+      :detail (detail txs)
+      :entry (entry state send!)
       :register (register state send!))))
 
 

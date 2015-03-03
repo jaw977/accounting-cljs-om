@@ -32,3 +32,16 @@
 
 (defn str->account [account]
   (keyword (str/join "-" (map #(.toLowerCase %) (str/split account ".")))))
+
+(defn add-leading-zero [n]
+  (let [s (str n)]
+    (if (= 1 (count s))
+      (str "0" s)
+      s)))
+      
+(defn today []
+  (let [d (js/Date.)]
+    (str (.getFullYear d) "/"
+         (add-leading-zero (inc (.getMonth d))) "/"
+         (add-leading-zero (.getDate d)))))
+      
