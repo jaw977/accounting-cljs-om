@@ -45,3 +45,8 @@
          (add-leading-zero (inc (.getMonth d))) "/"
          (add-leading-zero (.getDate d)))))
       
+(defn date->int [date]
+  (if (number? date)
+    date
+    (js/parseInt (.replace date (js/RegExp. "[^0-9]" "g") ""))))
+
