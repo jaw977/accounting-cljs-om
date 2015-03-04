@@ -1,6 +1,6 @@
 (ns accounting.entry
   (:require [clojure.string :as str]
-            [accounting.util :refer [assoc-last log log-clj str->fixpt fixpt->str str->account date->int today]]))
+            [accounting.util :refer [assoc-last log log-clj str->fixpt fixpt->str str->account date->int today balance-amount]]))
 
 (def empty-parts
   [{:account "", :amount "", :note "", :first? true}
@@ -20,13 +20,10 @@
           :txs (conj txs
                      {:date (date->int entry-date)
                       :description entry-description
-                      :parts (for [{:keys [account amount note]} entry-parts
-                                   :when (and (seq account) (seq amount))]
-                               (merge {:account (str->account account), :note note}
-                                      (str->amount-unit amount)))})}))
-
-(defn balance-amount [parts]
-  (- (apply + (map (comp str->fixpt :amount) parts))))
+                      :parts (vec (for [{:keys [account amount note]} entry-parts
+                                        :when (and (seq account) (seq amount))]
+                                    (merge {:account (str->account account), :note note}
+                                           (str->amount-unit amount))))})}))
 
 (defn blur-amount [ev {:keys [last?]} parts]
   (let [balance (balance-amount parts)]

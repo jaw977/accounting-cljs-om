@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [om.dom :as dom :include-macros true]
             [accounting.util :refer [assoc-last update-last log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]
-            [accounting.calc :as calc]))
+            [accounting.calc :as calc]
+            [accounting.export :as export]))
 
 (def right-align #js {:style #js {:textAlign "right"}})
 (def top-align #js {:style #js {:verticalAlign "text-top"}})
@@ -125,15 +126,12 @@
               (for [[total-unit total-amount] totals]
                 (dom/td right-align (calc/display-amount total-amount total-unit))))))))))
             
-(defn export [state]
-  (dom/p nil "Export screen coming soon!"))
-           
 (defn screen [{:keys [screen txs] :as state} send!]
   (dom/div nil
     (menu "" ["Import" "Summary" "Detail" "Entry" "Register" "Export"] screen send! :screen) 
     (case screen
       :import (import send!)
-      :export (export state)
+      :export (export/render txs)
       :summary (summary state send!)
       :detail (detail txs)
       :entry (entry state send!)

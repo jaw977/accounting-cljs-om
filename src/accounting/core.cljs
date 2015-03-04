@@ -8,6 +8,7 @@
             [accounting.render :as render]
             [accounting.entry :as entry]
             [accounting.import :as import]
+            [accounting.export :as export]
             [accounting.calc :as calc]))
 
 (enable-console-print!)

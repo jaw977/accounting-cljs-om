@@ -16,8 +16,11 @@
 (defn str->fixpt [s]
   (* s 100))
   
+(defn fixpt->float [n]
+  (/ n 100))
+
 (defn fixpt->str [n]
-  (.toFixed (/ n 100) 2))
+  (.toFixed (fixpt->float n) 2))
   
 (defn account-key->vec [account]
   (str/split (subs (str account) 1) "-"))
@@ -47,3 +50,5 @@
     date
     (js/parseInt (str/replace date #"[^0-9]" ""))))
 
+(defn balance-amount [parts]
+  (- (apply + (map (comp str->fixpt :amount) parts))))
