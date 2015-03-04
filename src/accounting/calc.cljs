@@ -1,5 +1,6 @@
 (ns accounting.calc
-  (:require [accounting.util :refer [assoc-last update-last ucfirst log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]))
+  (:require [clojure.string :as str]
+            [accounting.util :refer [assoc-last update-last log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]))
 
 (defn get-price [unit prices]
   ((peek prices) unit 1))
@@ -17,9 +18,9 @@
   ([amount unit] (display-amount amount unit nil))
   ([amount unit neg]
    (str (display-unit unit)
-        (.replace (fixpt->str (if neg (- amount) amount))
-                  (js/RegExp. "\\B(?=(\\d{3})+(?!\\d))" "g")
-                  ","))))
+        (str/replace (fixpt->str (if neg (- amount) amount))
+                     #"\B(?=(\d{3})+(?!\d))"
+                     ","))))
 
 (defn summarize [account-filter groupby txs prices]
   (->> txs

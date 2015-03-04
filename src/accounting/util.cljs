@@ -7,9 +7,6 @@
 (defn update-last [xs ks f & args]
   (apply update-in xs (into [(dec (count xs))] ks) f args))
 
-(defn ucfirst [s] 
-  (str (.toUpperCase (first s)) (subs s 1)))
-
 (defn log [x]
   (.log js/console x))
   
@@ -26,12 +23,12 @@
   (str/split (subs (str account) 1) "-"))
 
 (defn account-vec->str [account]
-  (str/join "." (map ucfirst account)))
+  (str/join "." (map str/capitalize account)))
 
 (def account-key->str (comp account-vec->str account-key->vec))
 
 (defn str->account [account]
-  (keyword (str/join "-" (map #(.toLowerCase %) (str/split account ".")))))
+  (keyword (str/join "-" (map str/lower-case (str/split account ".")))))
 
 (defn add-leading-zero [n]
   (let [s (str n)]
@@ -48,5 +45,5 @@
 (defn date->int [date]
   (if (number? date)
     date
-    (js/parseInt (.replace date (js/RegExp. "[^0-9]" "g") ""))))
+    (js/parseInt (str/replace date #"[^0-9]" ""))))
 

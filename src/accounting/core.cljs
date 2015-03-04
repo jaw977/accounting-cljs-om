@@ -4,7 +4,7 @@
             [om.dom :as dom :include-macros true]
             [clojure.string :as str]
             [cljs.core.async :refer [put! chan <!]]
-            [accounting.util :refer [assoc-last update-last ucfirst log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account today]]
+            [accounting.util :refer [assoc-last update-last log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account today]]
             [accounting.render :as render]
             [accounting.entry :as entry]
             [accounting.import :as import]

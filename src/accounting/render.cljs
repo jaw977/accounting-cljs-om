@@ -1,7 +1,7 @@
 (ns accounting.render
-  (:require 
+  (:require [clojure.string :as str]
             [om.dom :as dom :include-macros true]
-            [accounting.util :refer [assoc-last update-last ucfirst log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]
+            [accounting.util :refer [assoc-last update-last log log-clj str->fixpt fixpt->str account-key->vec account-vec->str account-key->str str->account]]
             [accounting.calc :as calc]))
 
 (def right-align #js {:style #js {:textAlign "right"}})
@@ -37,7 +37,7 @@
   (apply dom/p nil desc
     (interpose " \u00A0 "
       (for [title titles
-            :let [screen (keyword (.toLowerCase title))]]
+            :let [screen (keyword (str/lower-case title))]]
         (if (= screen current-screen)
           (dom/span #js {:style #js {:fontWeight "bold"}} title)
           (dom/a #js {:onClick (send! event-type screen) :href "#"} title))))))
@@ -85,9 +85,7 @@
             
 (defn camelcase-symbol->str [sym]
   (if (symbol? sym)
-    (.replace (str sym)
-              (js/RegExp. "([a-z])([A-Z])" "g")
-              "$1 $2")
+    (str/replace (str sym) #"([a-z])([A-Z])" "$1 $2")
     (str sym)))
 
 (defn format-date [date]
