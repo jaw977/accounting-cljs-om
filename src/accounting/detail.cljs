@@ -34,7 +34,7 @@
   (dom/table #js {:className "table"}
     (render/table-headings ["Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"])
     (apply dom/tbody nil
-      (for [tx txs
+      (for [tx (sort-by :date txs)
             {:keys [date description to-account amount from-account note]} (tx-detail-rows tx)]
         (dom/tr nil
           (dom/td nil (render/format-date date))

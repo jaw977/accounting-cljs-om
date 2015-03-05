@@ -6,6 +6,7 @@
 
 (defn register-parts [account txs]
   (->> txs
+       (sort-by :date)
        (map (fn [tx]
               (map #(merge % (select-keys tx [:date :description]))
                    (:parts tx))))
