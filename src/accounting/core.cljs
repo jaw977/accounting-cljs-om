@@ -9,7 +9,9 @@
             [accounting.entry :as entry]
             [accounting.import :as import]
             [accounting.export :as export]
-            [accounting.calc :as calc]))
+            [accounting.summary :as summary]
+            [accounting.detail :as detail]
+            [accounting.register :as register]))
 
 (enable-console-print!)
 
@@ -49,16 +51,27 @@
           :summary-groupby (om/update! app [:summary-groupby] arg)
           :summary-change (om/update! app [:summary-account] target-value)
           :register-change (om/update! app [:register-account] target-value)
-          :register-keydown (om/update! app [:register-parts] (calc/register-parts (str->account target-value) (:txs @app-state)))
+          :register-keydown (om/update! app [:register-parts] (register/register-parts (str->account target-value) (:txs @app-state)))
           :entry-change (om/transact! app #(entry/change-input arg target-value %))
           :entry-create (om/transact! app entry/create-transaction)
           :blur (om/transact! app [:entry-parts] #(entry/blur-amount ev arg %)))))))
+
+(defn render [{:keys [screen txs] :as state} send!]
+  (dom/div nil
+    (render/menu "" ["Import" "Summary" "Detail" "Entry" "Register" "Export"] screen send! :screen) 
+    (case screen
+      :import (import/render send!)
+      :export (export/render txs)
+      :summary (summary/render state send!)
+      :detail (detail/render txs)
+      :entry (entry/render state send!)
+      :register (register/render state send!))))
 
 (om/root 
   (fn [app owner]
     (reify
       om/IWillMount (will-mount [_] (handle-events app owner))
-      om/IRenderState (render-state [_ _] (render/screen @app-state send!))))
+      om/IRenderState (render-state [_ _] (render @app-state send!))))
   app-state
   {:target (. js/document (getElementById "accounting"))})
 

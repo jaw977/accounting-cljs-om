@@ -1,5 +1,6 @@
 (ns accounting.import
   (:require [cljs.reader]
+            [om.dom :as dom :include-macros true]
             [accounting.util :refer [update-last log log-clj str->fixpt date->int]]))
 
 (defn read-transaction-element [x]
@@ -43,3 +44,23 @@
 
 (defn import-prices [{:keys [target-value]} _]
   (cljs.reader/read-string target-value))
+
+(defn render [send!]
+  (dom/div nil
+    (dom/table nil
+      (dom/tr nil
+        (dom/td nil
+          (dom/p nil "Import transactions:  Paste data in the text area and press enter.  Example data: →")
+          (dom/textarea #js {:onKeyDown (send! :import-txs) :rows 20 :cols 100}))
+        (dom/td top-align
+          (dom/pre nil 
+            "[\n"
+            "[20140224 StartingEquity :assets-cash 100 :assets-etrade 2000 :equity]\n"
+            "[20140225 TraderJoes :expenses-groceries 25 :assets-cash]\n"
+            "[\"2014-02-26\" \"E*Trade\" :assets-etrade [10 :GLD] :expenses-commissions 10 :assets-etrade -1167]\n"
+            "[\"2014-02-27\" \"Whole Foods\" :expenses-groceries 30 :liabilities-visa]\n"
+            "[\"2014/02/28\" Paycheck :assets-bank 1000 :income-job]\n"
+            "]\n"))))
+    (dom/p nil "Import asset values:  Paste data and press enter.  Example Data:  "
+      (dom/span #js {:style #js {:fontFamily "monospace"}} "[{:GLD 115.70}]"))
+    (dom/textarea #js {:onKeyDown (send! :import-prices) :rows 20 :cols 100})))

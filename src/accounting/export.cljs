@@ -2,7 +2,6 @@
   (:require [clojure.string :as str]
             [om.dom :as dom :include-macros true]
             [accounting.util :refer [assoc-last log log-clj fixpt->float balance-amount]]))
-            ;[accounting.util :refer [assoc-last log log-clj]]))
 
 (defn export-part [{:keys [account amount unit]} last-account]
   (let [amount (and amount (fixpt->float amount))]
