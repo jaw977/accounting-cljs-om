@@ -14,7 +14,10 @@
   (log (clj->js x)))
 
 (defn str->fixpt [s]
-  (* s 100))
+  (* 100
+     (if (string? s)
+       (str/replace s #"[^-.0-9]" "")
+       s)))
   
 (defn fixpt->float [n]
   (/ n 100))

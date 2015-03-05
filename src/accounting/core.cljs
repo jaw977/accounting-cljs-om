@@ -53,17 +53,19 @@
           :register-change (om/update! app [:register-account] target-value)
           :register-keydown (om/update! app [:register-parts] (register/register-parts (str->account target-value) (:txs @app-state)))
           :entry-change (om/transact! app #(entry/change-input arg target-value %))
-          :entry-create (om/transact! app entry/create-transaction)
+          :entry-save (om/transact! app entry/save-tx)
+          :edit (om/transact! app #(entry/edit-tx % arg))
           :blur (om/transact! app [:entry-parts] #(entry/blur-amount ev arg %)))))))
 
 (defn render [{:keys [screen txs] :as state} send!]
+  (log-clj state)
   (dom/div nil
     (render/menu "" ["Import" "Summary" "Detail" "Entry" "Register" "Export"] screen send! :screen) 
     (case screen
       :import (import/render send!)
       :export (export/render txs)
       :summary (summary/render state send!)
-      :detail (detail/render txs)
+      :detail (detail/render txs send!)
       :entry (entry/render state send!)
       :register (register/render state send!))))
 

@@ -30,13 +30,14 @@
              :note note})))
       [0] merge (select-keys tx [:date :description]))))
 
-(defn render [txs]
+(defn render [txs send!]
   (dom/table #js {:className "table"}
-    (render/table-headings ["Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"])
+    (render/table-headings ["Edit" "Date" "Description" "Debit Acct" "" "Amt" "" "Credit Acct" "Note"])
     (apply dom/tbody nil
-      (for [tx (sort-by :date txs)
+      (for [[tx index] (sort-by (comp :date first) (map list txs (range)))
             {:keys [date description to-account amount from-account note]} (tx-detail-rows tx)]
         (dom/tr nil
+          (dom/td #js {:onClick (send! :edit index)} (if date "✎"))
           (dom/td nil (render/format-date date))
           (dom/td nil (render/camelcase-symbol->str description))
           (dom/td nil (account-key->str to-account))
