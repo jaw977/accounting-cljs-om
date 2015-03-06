@@ -61,7 +61,6 @@
           :blur (om/transact! app [:entry-parts] #(entry/blur-amount ev arg %)))))))
 
 (defn render [{:keys [screen txs] :as state} send!]
-  (log-clj state)
   (dom/div nil
     (render/menu "" ["Import" "Summary" "Detail" "Entry" "Register" "Export"] screen send! :screen) 
     (case screen

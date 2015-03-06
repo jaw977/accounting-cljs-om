@@ -12,13 +12,19 @@
   (let [[amount unit] (str/split s #"\s+" 2)]
     {:amount (str->fixpt amount), :unit (keyword unit)}))
 
+(defn str->description [s]
+  (let [sym (symbol (str/replace s #"\s" ""))]
+    (if (= s (render/camelcase-symbol->str sym))
+      sym
+      s)))
+
 (defn change-input [ks s state]
   (assoc (assoc-in state ks s)
          :entry-status :editing))
 
 (defn new-tx [{:keys [entry-date entry-description entry-parts]}]
   {:date (date->int entry-date)
-   :description entry-description
+   :description (str->description entry-description)
    :parts (vec (for [{:keys [account amount note]} entry-parts
                      :when (and (seq account) (seq amount))]
                  (merge {:account (str->account account), :note note}
@@ -77,7 +83,8 @@
                                              "You are currently editing an existing transaction."
                                              "You are currently creating a new transaction.")
                  :else "Create a new transaction by entering in data below."))
-    (dom/p nil "Amount:  Enter a plain number for a dollar amount (e.g. \"20\" for $20), or a number followed by symbol for a different asset (e.g. \"10 AAPL\" for 10 shares of AAPL).")
+    (dom/p nil "Amount:  Enter a plain number for a dollar amount (e.g. \"20\" for $20), or a number followed by symbol for a different asset (e.g. \"10 AAPL\" for 10 shares of AAPL).  A positive number indicates money flowing into an account (a debit), and a negative number indicates money flowing out of an account (a credit).  Income amounts are negative numbers and expense amounts are positive numbers.")
+    (dom/p nil "Data that you enter here is not automatically saved, either locally or externally.  Currently, the only way to save data that you enter is to enter the export screen, and manually copy and paste the contents displayed there, prior to closing or refreshing the browser window.")
     (dom/table #js {:className "table"}
       (render/table-headings ["Date" "Description" "Account" "Amount" "Note" ""])
       (apply dom/tbody nil
