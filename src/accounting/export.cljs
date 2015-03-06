@@ -21,11 +21,9 @@
               (into [nil] (map :account parts)))))
               
 (defn export-txs [txs]
-  (str "[\n"
-       (str/join "\n"
-              (for [{:keys [date description parts]} txs]
-                (str (into [date description] (export-parts parts)))))
-       "\n]\n"))
+  (str/join "\n"
+            (for [{:keys [date description parts]} txs]
+              (str (into [date description] (export-parts parts))))))
 
 (defn render [txs]
   (dom/textarea #js {:rows 40 :cols 100 :value (export-txs txs)}))

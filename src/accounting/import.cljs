@@ -37,30 +37,38 @@
                          (map (fn [[unit amount]] {:unit unit :amount amount})
                               balance-amounts))))))))
 
+(defn in-vec [s]
+  (str "[" s "]"))
+
 (defn import-transactions [{:keys [target-value]} {:keys [txs]}]
   (into txs
         (map normalize-transaction
-             (cljs.reader/read-string target-value))))
+             (cljs.reader/read-string (in-vec target-value)))))
 
 (defn import-prices [{:keys [target-value]} _]
-  (cljs.reader/read-string target-value))
+  (cljs.reader/read-string (in-vec target-value)))
+  
+(def example-txs 
+"[20140224 StartingEquity :assets-cash 100 :assets-etrade 2000 :equity]
+[20140225 TraderJoes :expenses-groceries 25 :assets-cash]
+[\"2014-02-26\" \"E*Trade\" :assets-etrade [10 :GLD] :expenses-commissions 10 :assets-etrade -1167]
+[\"2014-02-27\" \"Whole Foods\" :expenses-groceries 30 :liabilities-visa]
+[\"2014/02/28\" Paycheck :assets-bank 1000 :income-job]
+")
 
-(defn render [send!]
+(def example-prices "{:GLD 115.70}")
+
+(defn render [{:keys [import-txs import-prices]} send!]
   (dom/div nil
-    (dom/table nil
-      (dom/tr nil
-        (dom/td nil
-          (dom/p nil "Import transactions:  Paste data in the text area and press enter.  Example data: →")
-          (dom/textarea #js {:onKeyDown (send! :import-txs) :rows 20 :cols 100}))
-        (dom/td top-align
-          (dom/pre nil 
-            "[\n"
-            "[20140224 StartingEquity :assets-cash 100 :assets-etrade 2000 :equity]\n"
-            "[20140225 TraderJoes :expenses-groceries 25 :assets-cash]\n"
-            "[\"2014-02-26\" \"E*Trade\" :assets-etrade [10 :GLD] :expenses-commissions 10 :assets-etrade -1167]\n"
-            "[\"2014-02-27\" \"Whole Foods\" :expenses-groceries 30 :liabilities-visa]\n"
-            "[\"2014/02/28\" Paycheck :assets-bank 1000 :income-job]\n"
-            "]\n"))))
-    (dom/p nil "Import asset values:  Paste data and press enter.  Example Data:  "
-      (dom/span #js {:style #js {:fontFamily "monospace"}} "[{:GLD 115.70}]"))
-    (dom/textarea #js {:onKeyDown (send! :import-prices) :rows 20 :cols 100})))
+    (dom/p nil "Import transactions:  Paste data in the text area and press enter. "  
+      (dom/a #js {:onClick (send! :import-text [:import-txs example-txs]) :href "#"} "Example data"))
+    (dom/textarea #js {:onChange (send! :import-text [:import-txs]) 
+                       :onKeyDown (send! :import-txs)
+                       :value import-txs
+                       :rows 20 :cols 100})
+    (dom/p nil "Import asset values:  Paste data and press enter. "
+      (dom/a #js {:onClick (send! :import-text [:import-prices example-prices]) :href "#"} "Example data"))
+    (dom/textarea #js {:onChange (send! :import-text [:import-prices])
+                       :onKeyDown (send! :import-prices)
+                       :value import-prices
+                       :rows 20 :cols 100})))

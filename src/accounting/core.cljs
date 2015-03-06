@@ -25,6 +25,8 @@
    :summary-account ""
    :summary-groupby :account
    :register-account ""
+   :import-txs ""
+   :import-prices ""
    :entry-date (today)
    :entry-description ""
    :entry-parts entry/empty-parts}))
@@ -46,6 +48,7 @@
       (let [[type {:keys [target-value] :as ev} arg] (<! channel)]
         (case type
           :screen (om/update! app [:screen] arg)
+          :import-text (om/update! app [(first arg)] (or (second arg) target-value))
           :import-txs (om/transact! app #(merge % {:screen :summary, :txs (import/import-transactions ev %)}))
           :import-prices (om/transact! app #(merge % {:screen :summary, :prices (import/import-prices ev %)}))
           :summary-groupby (om/update! app [:summary-groupby] arg)
@@ -62,7 +65,7 @@
   (dom/div nil
     (render/menu "" ["Import" "Summary" "Detail" "Entry" "Register" "Export"] screen send! :screen) 
     (case screen
-      :import (import/render send!)
+      :import (import/render state send!)
       :export (export/render txs)
       :summary (summary/render state send!)
       :detail (detail/render txs send!)
